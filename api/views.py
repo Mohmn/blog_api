@@ -4,42 +4,12 @@ from rest_framework.decorators import api_view,permission_classes
 from rest_framework.response import Response
 
 from rest_framework.parsers import JSONParser
-from .models import Blog
-from .serializers import BlogSerializer
-from rest_framework.permissions import SAFE_METHODS, IsAuthenticated, IsAuthenticatedOrReadOnly, BasePermission, IsAdminUser, DjangoModelPermissions
-
-# SAFE_METHODS = ['GET', 'HEAD'] #rewrote it beacuse when i clicked on options user got permision to delete non-authored items
-
-
-class PostUserWritePermission(BasePermission):
+from .models import Blog,Author
+from .serializers import BlogSerializer,AuthorSerializer
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
+from .permissions import BlogUserWritePermission,AuthorUserWritePermission
 
 
-    def has_object_permission(self, request, view, obj):
-
-        
-        if request.method == "GET":
-            print(obj.creator.id,request.user.id,request.method,obj)
-
-            return True
-
-        return obj.creator == request.user
-
-
-class IsOwnerOrReadOnly(BasePermission):
-    """
-    Object-level permission to only allow owners of an object to edit it.
-    Assumes the model instance has an `owner` attribute.
-    """
-    message="checking "
-    # def has_permission(self,request)
-    def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
-        if request.method in SAFE_METHODS:
-            return False
-
-        # Instance must have an attribute named `owner`.
-        return obj.owner == request.user
 
 class ListBlogs(APIView):
     """
@@ -48,17 +18,14 @@ class ListBlogs(APIView):
     * Requires token authentication.
     * Only admin users are able to access this view.
     """
-    # authentication_classes = [authentication.TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     
     def get(self, request, format="json"):
         """
-        Return a list of all users.
+        Return a list of all blogs.
         """
-        # print(self.get_permissions())
-        # print(self.check_permissions(request))
-        # self.check_object_permissions(request, obj)
+   
         blogs = Blog.objects.all()
         serializer = BlogSerializer(blogs, many=True)
         return Response(serializer.data)
@@ -67,10 +34,9 @@ class ListBlogs(APIView):
         """
         create  a new blog
         """
-        print(request.data)
-        data = request.data
-        # if isinstance(request.data, QueryDict):
-        request.data._mutable = True
+#       beacause here req is of type queydict obj 
+        data = request.data.dict()
+        request.data._mutable = True 
         data['creator'] = request.user.id
         serializer = BlogSerializer(data=data)
         if serializer.is_valid():
@@ -80,7 +46,7 @@ class ListBlogs(APIView):
 
 
 class BlogDetail(APIView):
-    permission_classes = [IsAuthenticated,PostUserWritePermission]
+    permission_classes = [IsAuthenticated,BlogUserWritePermission]
     """
     Retrieve, update or delete a code snippet.
     """
@@ -121,3 +87,49 @@ class BlogDetail(APIView):
         blog.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class createUser(APIView):
+
+    def post(self,request,format="json"):
+        
+        data = request.data.dict()
+        serializer = AuthorSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class updateUsers(APIView):
+    permission_classes = [IsAuthenticated,AuthorUserWritePermission]
+
+    def get_object(self, pk):
+        try:
+            obj = Author.objects.get(pk=pk)
+            self.check_object_permissions(self.request, obj)
+            return obj
+        except Author.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def get(self,request,pk):
+
+        user = self.get_object(pk)
+        serializer = AuthorSerializer(user)
+        return Response(serializer.data)
+
+    def put(self,request,pk):
+        user = self.get_object(pk)
+        print(request.data)
+        serializer = AuthorSerializer(user,data=request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+    def delete(self,request,pk):
+        user = self.get_object(pk)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
