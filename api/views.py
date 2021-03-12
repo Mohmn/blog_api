@@ -8,10 +8,9 @@ from .models import Blog,Author
 from .serializers import BlogSerializer,AuthorSerializer
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from .permissions import BlogUserWritePermission,AuthorUserWritePermission
+from .pagination import CursorSetPagination
 
-
-
-class ListBlogs(APIView):
+class ListBlogs(APIView,CursorSetPagination):
     """
     View to list all users in the system.
 
@@ -19,6 +18,7 @@ class ListBlogs(APIView):
     * Only admin users are able to access this view.
     """
     permission_classes = [IsAuthenticated]
+    # pagination_class = [CursorSetPagination]
 
     
     def get(self, request, format="json"):
@@ -27,9 +27,21 @@ class ListBlogs(APIView):
         """
    
         blogs = Blog.objects.all()
-        serializer = BlogSerializer(blogs, many=True)
+        page = self.paginate_queryset(blogs,request,view=self)
+        if page is not None:
+            serializer = BlogSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        # serializer = BlogSerializer(blogs, many=True)
         return Response(serializer.data)
+#     queryset = self.filter_queryset(self.get_queryset())
 
+#     page = self.paginate_queryset(queryset)
+#     if page is not None:
+#         serializer = self.get_serializer(page, many=True)
+#         return self.get_paginated_response(serializer.data)
+
+#     serializer = self.get_serializer(queryset, many=True)
+#     return Response(serializer.data)
     def post(self, request, format="json"):
         """
         create  a new blog
