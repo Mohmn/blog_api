@@ -6,6 +6,7 @@ from django.contrib.auth.models import AbstractUser
 class Author(AbstractUser):
     following = models.ManyToManyField('Author',related_name="followieng",null=True,blank=True)
     followers = models.ManyToManyField('Author',related_name="followees",null=True,blank=True)
+    profile  = models.ImageField(null=True,blank=True)
     # image
 
 class Blog(models.Model):
