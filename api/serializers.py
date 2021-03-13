@@ -9,7 +9,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Author
-        fields = ('username','followers','following','email','password')
+        fields = ('username','followers','following','email','password','profile')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self,validated_data):
